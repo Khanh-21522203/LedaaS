@@ -1,32 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../api/client";
 import { Card, Table, StatusBadge } from "../../components/ui";
+import { formatDate, formatCurrency } from "../../utils/formatters";
 import type { Transaction } from "../../types";
-
-function formatDate(date: string): string {
-    return new Date(date).toLocaleString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-}
-
-function formatCurrency(amount: string | number): string {
-    const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(numAmount);
-}
 
 export function TransactionsPage({ ledgerID }: { ledgerID: string }) {
     const query = useQuery({
         queryKey: ["transactions", ledgerID],
-        queryFn: () => apiClient.getTransactions(ledgerID),
+        queryFn: () => apiClient.getTransactions(),
     });
 
     const columns = [
@@ -53,11 +34,15 @@ export function TransactionsPage({ ledgerID }: { ledgerID: string }) {
         {
             key: "amount" as const,
             header: "AMOUNT",
-            render: (row: Transaction) => (
-                <span className="font-mono font-semibold text-gray-900">
-                    {formatCurrency(row.amount)}
-                </span>
-            ),
+            render: (row: Transaction) => {
+                const amount = parseFloat(row.amount);
+                const isNegative = amount < 0;
+                return (
+                    <span className={`font-mono font-semibold ${isNegative ? "text-red-600" : "text-green-600"}`}>
+                        {formatCurrency(row.amount)}
+                    </span>
+                );
+            },
             className: "text-right",
         },
         {

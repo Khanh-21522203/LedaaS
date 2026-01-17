@@ -2,20 +2,13 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../api/client";
 import { Button, Input, Card, CardBody, Table, Alert, StatusBadge } from "../../components/ui";
+import { formatDate } from "../../utils/formatters";
+import { useApiKey } from "../../contexts/ApiKeyContext";
 import type { ApiKey } from "../../types";
-
-function formatDate(date: string): string {
-    return new Date(date).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-}
 
 export function ApiKeysPage({ ledgerID }: { ledgerID: string }) {
     const qc = useQueryClient();
+    const {setApiKey } = useApiKey();
     const [description, setDescription] = useState("");
     const [newKey, setNewKey] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
@@ -161,9 +154,21 @@ export function ApiKeysPage({ ledgerID }: { ledgerID: string }) {
                                 {copied ? "Copied!" : "Copy"}
                             </Button>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => setNewKey(null)}>
-                            Dismiss
-                        </Button>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => {
+                                    setApiKey(newKey);
+                                    setNewKey(null);
+                                }}
+                            >
+                                Use This Key
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setNewKey(null)}>
+                                Dismiss
+                            </Button>
+                        </div>
                     </div>
                 </Alert>
             )}

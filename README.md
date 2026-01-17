@@ -16,96 +16,118 @@ A modern double-entry bookkeeping system built with Go and React.
 ## Architecture
 
 ```mermaid
-graph TB
-    %% Client Layer
-    subgraph "Client Applications"
-        A[React Frontend]
-        B[Mobile Apps]
-        C[Third Party APIs]
+flowchart LR
+    %% --- STYLE DEFINITIONS ---
+    classDef client fill:#e6fcf5,stroke:#0ca678,stroke-width:2px;
+    classDef component fill:#e7f5ff,stroke:#1c7ed6,stroke-width:2px;
+    classDef storage fill:#f3f0ff,stroke:#7950f2,stroke-width:2px,shape:cylinder;
+    classDef eventstore fill:#ffe3e3,stroke:#e03131,stroke-width:3px,shape:cylinder;
+    classDef external fill:#fff9db,stroke:#f08c00,stroke-width:2px;
+    classDef queue fill:#fff4e6,stroke:#fd7e14,stroke-width:2px,shape:c;
+
+    %% --- CLIENT ---
+    subgraph ClientLayer ["Client Side"]
+        Dashboard["React Dashboard"]:::client
     end
 
-    %% API Gateway
-    subgraph "API Gateway"
-        D[Auth Middleware]
-        E[Rate Limiter]
-        F[Request Validation]
+    %% --- API SERVER (DETAILED LAYERS) ---
+    subgraph APIServer ["API Server (Go) - Port 8080"]
+        direction TB
+        
+        %% 1. Middleware Layer
+        subgraph L_MW ["Layer 1: Middleware"]
+            direction TB
+            AuthMW["Auth Middleware<br/>(Check JWT/API Key)"]:::component
+        end
+
+        %% 2. Transport/Handler Layer
+        subgraph L_Handler ["Layer 2: Transport"]
+            direction TB
+            Handlers["HTTP Handlers<br/>(Gin/Echo/Fiber)<br/>Parse Req & Validate"]:::component
+        end
+
+        %% 3. Business Logic Layer
+        subgraph L_Service ["Layer 3: Business Logic"]
+            direction TB
+            Services["Services / Domain Logic<br/>(Rules, Cmd Handling)"]:::component
+        end
+
+        %% 4. Data Access Layer
+        subgraph L_DAL ["Layer 4: Data Access"]
+            direction TB
+            Repo["Repositories / DAL<br/>(SQL Queries / ORM)"]:::component
+        end
+
+        %% Internal Flow
+        AuthMW --> Handlers
+        Handlers --> Services
+        Services --> Repo
     end
 
-    %% API Server
-    subgraph "Go API Server"
-        G[HTTP Handlers]
-        H[Business Logic]
-        I[Data Access Layer]
+    %% --- DATABASE ---
+    subgraph Database ["PostgreSQL"]
+        direction TB
+        
+        subgraph IAM ["IAM Tables"]
+            APIKeys[(api_keys)]:::storage
+            Users[(users)]:::storage
+        end
+
+        subgraph CoreData ["Write Side"]
+            Events[("EVENTS<br/>(Event Store)")]:::eventstore
+            RiverJobs{{"River Job<br/>(Queue)"}}:::queue
+        end
+        
+        subgraph ReadModels ["Read Side"]
+            Accounts[(accounts)]:::storage
+            Transactions[(transactions)]:::storage
+        end
+        
+         subgraph WH_Store ["Webhook Tables"]
+            WebhookEP[(wh_endpoints)]:::storage
+            WebhookDel[(wh_deliveries)]:::storage
+        end
     end
 
-    %% Data Layer
-    subgraph "Data Layer"
-        J[(PostgreSQL)]
-        K[River Job Queue]
-        L[(Redis Cache)]
+    %% --- WORKERS ---
+    subgraph Workers ["Async Workers"]
+        direction TB
+        Projector["Projector"]:::component
+        WebhookWorker["Webhook Worker"]:::component
     end
 
-    %% Background Processing
-    subgraph "Background Processing"
-        M[River Workers]
-        N[Projector Service]
-        O[Webhook Workers]
-    end
+    %% --- EXTERNAL ---
+    CustomerWebhook["Customer Endpoints"]:::external
 
-    %% Infrastructure
-    subgraph "Infrastructure"
-        P[Docker Compose]
-        Q[Health Checks]
-        R[Metrics & Logging]
-    end
+    %% --- CONNECTIONS ---
 
-    %% Connections
-    A --> D
-    B --> D
-    C --> D
-    D --> E
-    E --> F
-    F --> G
-    G --> H
-    H --> I
-    I --> J
-    I --> K
-    I --> L
+    %% 1. Ingress
+    Dashboard ==>|HTTPS| AuthMW
+
+    %% 2. Middleware Access
+    AuthMW -.->|Read| APIKeys
+
+    %% 3. DAL Access (The only layer touching DB)
+    Repo -->|Insert| Events
+    Repo -->|Enqueue| RiverJobs
+    Repo -.->|Select| Accounts
+    Repo -.->|Select| Transactions
+    Repo -.->|Select| Users
+    Repo -.->|Select| WebhookEP
+
+    %% 4. Worker Flows
+    Projector -->|Poll| Events
+    Projector -->|Upsert| Accounts
+    Projector -->|Upsert| Transactions
+
+    WebhookWorker -->|Poll| RiverJobs
+    WebhookWorker -->|Read| Events
+    WebhookWorker -->|Log| WebhookDel
+    WebhookWorker ==>|POST| CustomerWebhook
     
-    J --> M
-    K --> M
-    M --> N
-    M --> O
-    
-    N --> J
-    O --> C
-    
-    P --> Q
-    Q --> R
-```
+    %% Formatting
+    linkStyle default interpolate basis
 
-### Data Flow
-
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant G as API Gateway
-    participant A as API Server
-    participant D as Database
-    participant Q as Job Queue
-    participant W as Workers
-    
-    C->>G: HTTP Request
-    G->>G: Auth & Rate Limit
-    G->>A: Validated Request
-    A->>A: Business Logic
-    A->>D: Save Event
-    A->>Q: Publish Job
-    A->>C: Response
-    
-    Q->>W: Process Job
-    W->>D: Update Read Models
-    W->>C: Webhook Notification
 ```
 
 ## Quick Start
@@ -120,55 +142,14 @@ sequenceDiagram
 # Start all services
 docker compose up -d --build
 
-# Check status
-docker compose ps
-
-# View logs
-docker compose logs -f
+# Run web frontend
+cd web && npm run dev
 ```
 
 Services will be available at:
 - API: http://localhost:8080
 - Web: http://localhost:5173
 - PostgreSQL: localhost:5432
-
-### Development
-
-```bash
-# Start backend services
-docker compose up -d postgres worker
-
-# Run API locally
-go run ./cmd/api
-
-# Run web frontend
-cd web && npm run dev
-```
-
-## API Documentation
-
-### Health Check
-```bash
-curl http://localhost:8080/health
-```
-
-### Authentication
-All API endpoints require valid API keys or JWT tokens.
-
-### Core Endpoints
-- `POST /transactions` - Create new transactions
-- `GET /ledgers/{id}/balance` - Get account balances
-- `GET /events` - Query event history
-
-## Testing
-
-```bash
-# Run integration tests
-docker compose --profile test up test
-
-# Run unit tests
-go test ./...
-```
 
 ## Project Structure
 

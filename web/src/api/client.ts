@@ -6,8 +6,13 @@ import type {
   Transaction,
   Ledger,
   ApiKey,
-  WebhookDelivery,
-  WebhookEndpoint,
+  UserResponse,
+  WebhookDeliveryResponse,
+  WebhookEndpointResponse,
+  AccountResponse,
+  Event,
+  BalanceSummary,
+  BalanceHistory,
 } from "../types";
 
 /**
@@ -23,15 +28,31 @@ export const api = axios.create({
 });
 
 /**
+ * API client for API key authenticated requests (Authorization header)
+ * Used for ledger operations (transactions, accounts, events, webhooks)
+ */
+export const apiClientWithKey = axios.create({
+  baseURL: "/api",
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+/**
  * Response interceptor for global error handling
+ * Note: 401 errors are handled by AuthContext checkAuth() - no automatic redirect
  */
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    // Redirect to login on 401 Unauthorized
-    if (error.response?.status === 401) {
-      window.location.href = "/login";
-    }
+    return Promise.reject(error);
+  }
+);
+
+apiClientWithKey.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
     return Promise.reject(error);
   }
 );
@@ -39,217 +60,83 @@ api.interceptors.response.use(
 /**
  * API client with typed methods matching backend routes
  * 
- * IMPORTANT: Most routes are NOT yet implemented in the backend.
- * Only POST /v1/transactions is currently available.
- * The frontend should gracefully handle 404s for unimplemented routes.
+ * Backend now has two auth mechanisms:
+ * 1. JWT Cookie Auth (Dashboard APIs) - for user management
+ * 2. API Key Auth (Ledger APIs) - for ledger operations
  */
 export const apiClient = {
   // =========================================================================
-  // Transaction API (IMPLEMENTED in backend)
+  // Authentication APIs (No auth required)
   // =========================================================================
 
   /**
-   * Post a transaction to the ledger
-   * Backend: POST /v1/transactions
-   * Auth: Requires API key in Authorization header (Bearer token)
+   * Register a new user
+   * Backend: POST /api/auth/register
    */
-  postTransaction: async (
-    request: PostTransactionRequest
-  ): Promise<PostTransactionResponse> => {
-    const response = await api.post<PostTransactionResponse>(
-      "/v1/transactions",
-      request
-    );
+  register: async (data: {
+    email: string;
+    password: string;
+    organization_name: string;
+  }): Promise<{ user_id: string; organization_id: string }> => {
+    const response = await api.post("/auth/register", data);
     return response.data;
   },
 
-  // =========================================================================
-  // Account API (NOT YET IMPLEMENTED in backend)
-  // =========================================================================
-
   /**
-   * Get all accounts for a ledger
-   * Backend: GET /v1/ledgers/:ledgerId/accounts (NOT IMPLEMENTED)
+   * Login with email and password
+   * Backend: POST /api/auth/login
+   * Sets session cookie
    */
-  getAccounts: async (ledgerId: string): Promise<Account[]> => {
-    try {
-      const response = await api.get<Account[]>(
-        `/v1/ledgers/${ledgerId}/accounts`
-      );
-      return response.data;
-    } catch (error) {
-      // Return mock data if endpoint not implemented
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        console.warn("Accounts endpoint not yet implemented - using mock data");
-        return [
-          {
-            id: "acc_001",
-            ledger_id: ledgerId,
-            code: "1000",
-            name: "Cash",
-            type: "asset",
-            balance: "50000.00",
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: "acc_002",
-            ledger_id: ledgerId,
-            code: "1100",
-            name: "Accounts Receivable",
-            type: "asset",
-            balance: "25000.00",
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: "acc_003",
-            ledger_id: ledgerId,
-            code: "2000",
-            name: "Accounts Payable",
-            type: "liability",
-            balance: "15000.00",
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: "acc_004",
-            ledger_id: ledgerId,
-            code: "3000",
-            name: "Owner's Equity",
-            type: "equity",
-            balance: "60000.00",
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: "acc_005",
-            ledger_id: ledgerId,
-            code: "4000",
-            name: "Revenue",
-            type: "revenue",
-            balance: "75000.00",
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: "acc_006",
-            ledger_id: ledgerId,
-            code: "5000",
-            name: "Operating Expenses",
-            type: "expense",
-            balance: "15000.00",
-            created_at: new Date().toISOString(),
-          },
-        ];
-      }
-      throw error;
-    }
+  login: async (email: string, password: string): Promise<void> => {
+    await api.post("/auth/login", { email, password });
   },
 
   /**
-   * Get a specific account
-   * Backend: GET /v1/ledgers/:ledgerId/accounts/:accountId (NOT IMPLEMENTED)
+   * Get current user info
+   * Backend: GET /api/auth/me
+   * Auth: JWT cookie
    */
-  getAccount: async (ledgerId: string, accountId: string): Promise<Account> => {
-    const response = await api.get<Account>(
-      `/v1/ledgers/${ledgerId}/accounts/${accountId}`
-    );
+  getCurrentUser: async (): Promise<UserResponse> => {
+    const response = await api.get<UserResponse>("/auth/me");
     return response.data;
   },
 
-  // =========================================================================
-  // Transaction Query API (NOT YET IMPLEMENTED in backend)
-  // =========================================================================
-
   /**
-   * Get all transactions for a ledger
-   * Backend: GET /v1/ledgers/:ledgerId/transactions (NOT IMPLEMENTED)
+   * Logout
+   * Backend: Clear session cookie
    */
-  getTransactions: async (ledgerId: string): Promise<Transaction[]> => {
-    try {
-      const response = await api.get<Transaction[]>(
-        `/v1/ledgers/${ledgerId}/transactions`
-      );
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        console.warn("Transactions endpoint not yet implemented - using mock data");
-        return [
-          {
-            id: "txn_001",
-            ledger_id: ledgerId,
-            external_id: "invoice-2026-001",
-            amount: "1500.00",
-            currency: "USD",
-            occurred_at: new Date(Date.now() - 3600000).toISOString(),
-            created_at: new Date(Date.now() - 3600000).toISOString(),
-          },
-          {
-            id: "txn_002",
-            ledger_id: ledgerId,
-            external_id: "payment-2026-042",
-            amount: "2500.00",
-            currency: "USD",
-            occurred_at: new Date(Date.now() - 7200000).toISOString(),
-            created_at: new Date(Date.now() - 7200000).toISOString(),
-          },
-        ];
-      }
-      throw error;
-    }
-  },
-
-  /**
-   * Get a specific transaction
-   * Backend: GET /v1/ledgers/:ledgerId/transactions/:transactionId (NOT IMPLEMENTED)
-   */
-  getTransaction: async (
-    ledgerId: string,
-    transactionId: string
-  ): Promise<Transaction> => {
-    const response = await api.get<Transaction>(
-      `/v1/ledgers/${ledgerId}/transactions/${transactionId}`
-    );
-    return response.data;
+  logout: async (): Promise<void> => {
+    await api.post("/auth/logout");
   },
 
   // =========================================================================
-  // Ledger Management API (NOT YET IMPLEMENTED in backend)
+  // Dashboard Ledger Management APIs (JWT auth via cookie)
   // =========================================================================
 
   /**
    * Get all ledgers for current user
-   * Backend: GET /v1/ledgers (NOT IMPLEMENTED)
+   * Backend: GET /api/ledgers
+   * Auth: JWT cookie
    */
   getLedgers: async (): Promise<Ledger[]> => {
-    try {
-      const response = await api.get<Ledger[]>("/v1/ledgers");
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        console.warn("Ledgers endpoint not yet implemented - using mock data");
-        return [
-          {
-            id: "1",
-            project_id: "default-project",
-            name: "Production Ledger",
-            code: "production",
-            currency: "USD",
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: "2",
-            project_id: "default-project",
-            name: "Development Ledger",
-            code: "development",
-            currency: "EUR",
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-          },
-        ];
-      }
-      throw error;
-    }
+    const response = await api.get<Ledger[]>("/ledgers");
+    return response.data;
+  },
+
+  /**
+   * Get a specific ledger
+   * Backend: GET /api/ledgers?id={id}
+   * Auth: JWT cookie
+   */
+  getLedger: async (id: string): Promise<Ledger> => {
+    const response = await api.get<Ledger>(`/ledgers?id=${id}`);
+    return response.data;
   },
 
   /**
    * Create a new ledger
-   * Backend: POST /v1/ledgers (NOT IMPLEMENTED)
+   * Backend: POST /api/ledgers
+   * Auth: JWT cookie
    */
   createLedger: async (data: {
     project_id: string;
@@ -257,208 +144,228 @@ export const apiClient = {
     code: string;
     currency: string;
   }): Promise<Ledger> => {
-    try {
-      const response = await api.post<Ledger>("/v1/ledgers", data);
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        console.warn("Create ledger endpoint not yet implemented - using mock");
-        // Return mock created ledger
-        return {
-          id: "ledger_" + Date.now(),
-          project_id: data.project_id,
-          name: data.name,
-          code: data.code,
-          currency: data.currency,
-          created_at: new Date().toISOString(),
-        };
-      }
-      throw error;
-    }
+    const response = await api.post<Ledger>("/ledgers", data);
+    return response.data;
   },
 
   // =========================================================================
-  // API Key Management (NOT YET IMPLEMENTED in backend)
+  // Dashboard API Key Management APIs (JWT auth via cookie)
   // =========================================================================
 
   /**
    * Get all API keys for a ledger
-   * Backend: GET /v1/ledgers/:ledgerId/api-keys (NOT IMPLEMENTED)
+   * Backend: GET /api/ledgers/api-keys?ledger_id={id}
+   * Auth: JWT cookie
    */
   getApiKeys: async (ledgerId: string): Promise<ApiKey[]> => {
-    try {
-      const response = await api.get<ApiKey[]>(
-        `/v1/ledgers/${ledgerId}/api-keys`
-      );
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        console.warn("API keys endpoint not yet implemented - using mock data");
-        return [
-          {
-            id: "key_001",
-            ledger_id: ledgerId,
-            key_hash: "hash1",
-            prefix: "laas_test_abc123",
-            description: "Test API Key",
-            is_active: true,
-            created_at: new Date().toISOString(),
-            revoked_at: null,
-          },
-          {
-            id: "key_002",
-            ledger_id: ledgerId,
-            key_hash: "hash2",
-            prefix: "laas_prod_xyz789",
-            description: "Production API Key",
-            is_active: true,
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-            revoked_at: null,
-          },
-        ];
-      }
-      throw error;
-    }
+    const response = await api.get<ApiKey[]>(`/ledgers/api-keys?ledger_id=${ledgerId}`);
+    return response.data;
   },
 
   /**
    * Create a new API key
-   * Backend: POST /v1/ledgers/:ledgerId/api-keys (NOT IMPLEMENTED)
+   * Backend: POST /api/ledgers/api-keys?ledger_id={id}
+   * Auth: JWT cookie
    */
   createApiKey: async (
     ledgerId: string,
     description: string
   ): Promise<{ raw_key: string }> => {
-    try {
-      const response = await api.post<{ raw_key: string }>(
-        `/v1/ledgers/${ledgerId}/api-keys`,
-        { description }
-      );
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        console.warn("Create API key endpoint not yet implemented - using mock");
-        // Generate mock API key
-        const randomKey = `laas_test_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-        return { raw_key: randomKey };
-      }
-      throw error;
-    }
+    const response = await api.post<{ raw_key: string }>(
+      `/ledgers/api-keys?ledger_id=${ledgerId}`,
+      { description }
+    );
+    return response.data;
   },
 
   /**
    * Revoke an API key
-   * Backend: POST /v1/api-keys/:keyId/revoke (NOT IMPLEMENTED)
+   * Backend: POST /api/api-keys/revoke?id={id}
+   * Auth: JWT cookie
    */
   revokeApiKey: async (keyId: string): Promise<void> => {
-    try {
-      await api.post(`/v1/api-keys/${keyId}/revoke`);
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        console.warn("Revoke API key endpoint not yet implemented - mock success");
-        // Mock success - do nothing
-        return;
-      }
-      throw error;
-    }
+    await api.post(`/api-keys/revoke?id=${keyId}`);
   },
 
   // =========================================================================
-  // Webhook Management (NOT YET IMPLEMENTED in backend)
+  // Transaction APIs (API key auth via Authorization header)
   // =========================================================================
 
   /**
-   * Get webhook endpoints for a ledger
-   * Backend: GET /v1/ledgers/:ledgerId/webhooks (NOT IMPLEMENTED)
+   * Post a transaction to the ledger
+   * Backend: POST /v1/transactions
+   * Auth: API key in Authorization header (Bearer token)
    */
-  getWebhookEndpoints: async (ledgerId: string): Promise<WebhookEndpoint[]> => {
-    try {
-      const response = await api.get<WebhookEndpoint[]>(
-        `/v1/ledgers/${ledgerId}/webhooks`
-      );
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        console.warn("Webhook endpoints not yet implemented");
-        return [];
-      }
-      throw error;
-    }
+  postTransaction: async (
+    request: PostTransactionRequest
+  ): Promise<PostTransactionResponse> => {
+    const response = await apiClientWithKey.post<PostTransactionResponse>(
+      "/v1/transactions",
+      request
+    );
+    return response.data;
   },
 
   /**
-   * Get webhook delivery logs for a ledger
-   * Backend: GET /v1/ledgers/:ledgerId/webhook-deliveries (NOT IMPLEMENTED)
+   * Get all transactions for a ledger
+   * Backend: GET /v1/transactions
+   * Auth: API key in Authorization header
    */
-  getWebhookDeliveries: async (ledgerId: string): Promise<WebhookDelivery[]> => {
-    try {
-      const response = await api.get<WebhookDelivery[]>(
-        `/v1/ledgers/${ledgerId}/webhook-deliveries`
-      );
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        console.warn("Webhook deliveries endpoint not yet implemented - using mock data");
-        return [
-          {
-            id: "delivery_001",
-            event_id: "evt_" + Date.now(),
-            webhook_endpoint_id: "endpoint_001",
-            status: "success",
-            attempt: 1,
-            last_attempt_at: new Date().toISOString(),
-            http_status: 200,
-            error_message: null,
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: "delivery_002",
-            event_id: "evt_" + (Date.now() - 3600000),
-            webhook_endpoint_id: "endpoint_001",
-            status: "retryable_error",
-            attempt: 2,
-            last_attempt_at: new Date(Date.now() - 3600000).toISOString(),
-            http_status: 500,
-            error_message: "Internal server error",
-            created_at: new Date(Date.now() - 3600000).toISOString(),
-          },
-        ];
-      }
-      throw error;
-    }
+  getTransactions: async (): Promise<Transaction[]> => {
+    const response = await apiClientWithKey.get<Transaction[]>("/v1/transactions");
+    return response.data;
+  },
+
+  /**
+   * Get a specific transaction
+   * Backend: GET /v1/transactions?id={id}
+   * Auth: API key in Authorization header
+   */
+  getTransaction: async (id: string): Promise<Transaction> => {
+    const response = await apiClientWithKey.get<Transaction>(`/v1/transactions?id=${id}`);
+    return response.data;
   },
 
   // =========================================================================
-  // Authentication (NOT YET IMPLEMENTED in backend)
+  // Account APIs (API key auth via Authorization header)
   // =========================================================================
 
   /**
-   * Login with email and password
-   * Backend: POST /auth/login (NOT IMPLEMENTED)
+   * Get all accounts for current ledger
+   * Backend: GET /v1/accounts
+   * Auth: API key in Authorization header
    */
-  login: async (email: string, password: string): Promise<{ token: string }> => {
-    try {
-      const response = await api.post<{ token: string }>("/auth/login", {
-        email,
-        password,
-      });
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        console.warn("Login endpoint not yet implemented - using mock auth");
-        // Mock successful login
-        return { token: "mock-jwt-token-" + Date.now() };
-      }
-      throw error;
-    }
+  getAccounts: async (): Promise<Account[]> => {
+    const response = await apiClientWithKey.get<Account[]>("/v1/accounts");
+    return response.data;
   },
 
   /**
-   * Logout
-   * Backend: POST /auth/logout (NOT IMPLEMENTED)
+   * Get a specific account by code
+   * Backend: GET /v1/accounts?code={code}
+   * Auth: API key in Authorization header
    */
-  logout: async (): Promise<void> => {
-    await api.post("/auth/logout");
+  getAccount: async (code: string): Promise<AccountResponse> => {
+    const response = await apiClientWithKey.get<AccountResponse>(`/v1/accounts?code=${code}`);
+    return response.data;
+  },
+
+  /**
+   * Create a new account
+   * Backend: POST /v1/accounts
+   * Auth: API key in Authorization header
+   */
+  createAccount: async (data: {
+    code: string;
+    name: string;
+    type: string;
+  }): Promise<AccountResponse> => {
+    const response = await apiClientWithKey.post<AccountResponse>("/v1/accounts", data);
+    return response.data;
+  },
+
+  // =========================================================================
+  // Event APIs (API key auth via Authorization header)
+  // =========================================================================
+
+  /**
+   * Get all events for current ledger
+   * Backend: GET /v1/events
+   * Auth: API key in Authorization header
+   */
+  getEvents: async (): Promise<Event[]> => {
+    const response = await apiClientWithKey.get<Event[]>("/v1/events");
+    return response.data;
+  },
+
+  /**
+   * Get a specific event
+   * Backend: GET /v1/events?id={id}
+   * Auth: API key in Authorization header
+   */
+  getEvent: async (id: string): Promise<Event> => {
+    const response = await apiClientWithKey.get<Event>(`/v1/events?id=${id}`);
+    return response.data;
+  },
+
+  // =========================================================================
+  // Balance APIs (API key auth via Authorization header)
+  // =========================================================================
+
+  /**
+   * Get balance summary for current ledger
+   * Backend: GET /v1/balance/summary
+   * Auth: API key in Authorization header
+   */
+  getBalanceSummary: async (): Promise<BalanceSummary> => {
+    const response = await apiClientWithKey.get<BalanceSummary>("/v1/balance/summary");
+    return response.data;
+  },
+
+  /**
+   * Get balance history for an account
+   * Backend: GET /v1/accounts/balance-history
+   * Auth: API key in Authorization header
+   */
+  getAccountBalanceHistory: async (params?: {
+    account_code?: string;
+    from?: string;
+    to?: string;
+  }): Promise<BalanceHistory[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.account_code) queryParams.append("account_code", params.account_code);
+    if (params?.from) queryParams.append("from", params.from);
+    if (params?.to) queryParams.append("to", params.to);
+    const response = await apiClientWithKey.get<BalanceHistory[]>(
+      `/v1/accounts/balance-history?${queryParams.toString()}`
+    );
+    return response.data;
+  },
+
+  // =========================================================================
+  // Webhook Management (API key auth via Authorization header)
+  // =========================================================================
+
+  /**
+   * Get webhook endpoints for current ledger
+   * Backend: GET /v1/webhook-endpoints
+   * Auth: API key in Authorization header
+   */
+  getWebhookEndpoints: async (): Promise<WebhookEndpointResponse[]> => {
+    const response = await apiClientWithKey.get<WebhookEndpointResponse[]>(
+      "/v1/webhook-endpoints"
+    );
+    return response.data;
+  },
+
+  /**
+   * Create a new webhook endpoint
+   * Backend: POST /v1/webhook-endpoints
+   * Auth: API key in Authorization header
+   */
+  createWebhookEndpoint: async (data: {
+    url: string;
+  }): Promise<{ id: string; url: string; secret: string }> => {
+    const response = await apiClientWithKey.post<{
+      id: string;
+      url: string;
+      secret: string;
+    }>("/v1/webhook-endpoints", data);
+    return response.data;
+  },
+
+  /**
+   * Get webhook delivery logs for current ledger
+   * Backend: GET /v1/webhook-deliveries
+   * Auth: API key in Authorization header
+   */
+  getWebhookDeliveries: async (
+    limit?: number
+  ): Promise<WebhookDeliveryResponse[]> => {
+    const response = await apiClientWithKey.get<WebhookDeliveryResponse[]>(
+      `/v1/webhook-deliveries${limit ? `?limit=${limit}` : ""}`
+    );
+    return response.data;
   },
 };
 

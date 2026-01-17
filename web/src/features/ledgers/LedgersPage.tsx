@@ -1,16 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { apiClient } from "../../api/client";
-
-const CURRENCIES = [
-    { value: "USD", label: "USD - US Dollar" },
-    { value: "EUR", label: "EUR - Euro" },
-    { value: "GBP", label: "GBP - British Pound" },
-    { value: "JPY", label: "JPY - Japanese Yen" },
-    { value: "CAD", label: "CAD - Canadian Dollar" },
-    { value: "AUD", label: "AUD - Australian Dollar" },
-];
+import { CURRENCIES } from "../../utils/constants";
 
 export function LedgersPage() {
     const navigate = useNavigate();
@@ -19,30 +12,39 @@ export function LedgersPage() {
     const [name, setName] = useState("");
     const [code, setCode] = useState("");
     const [currency, setCurrency] = useState("USD");
+    const [error, setError] = useState<string | null>(null);
 
-    // Fetch ledgers from API (will use mock data if backend not available)
+    // Fetch ledgers from API
     const ledgersQuery = useQuery({
         queryKey: ["ledgers"],
         queryFn: () => apiClient.getLedgers(),
+        retry: false,
     });
 
     // Create ledger mutation
     const createMutation = useMutation({
-        mutationFn: (data: { project_id: string; name: string; code: string; currency: string }) => 
-            apiClient.createLedger(data),
+        mutationFn: (data: { name: string; code: string; currency: string }) =>
+            apiClient.createLedger({ ...data, project_id: "" }),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["ledgers"] });
             setShowForm(false);
             setName("");
             setCode("");
             setCurrency("USD");
+            setError(null);
+        },
+        onError: (err) => {
+            if (err instanceof AxiosError) {
+                setError(err.response?.data?.error || err.response?.data?.message || "Failed to create ledger. Please try again.");
+            } else {
+                setError("An unexpected error occurred. Please try again.");
+            }
         },
     });
 
     function onSubmit(e: React.FormEvent) {
         e.preventDefault();
         createMutation.mutate({
-            project_id: "default-project",
             name,
             code,
             currency,
@@ -76,6 +78,11 @@ export function LedgersPage() {
                         <h2 className="text-lg font-semibold text-gray-900">Create New Ledger</h2>
                     </div>
                     <div className="border-t border-gray-200 p-6">
+                        {error && (
+                            <div className="mb-4 rounded-md bg-red-50 p-4">
+                                <p className="text-sm text-red-800">{error}</p>
+                            </div>
+                        )}
                         <form onSubmit={onSubmit} className="space-y-4">
                             <div>
                                 <label htmlFor="ledger-name" className="block text-sm font-medium text-gray-700">
@@ -131,9 +138,10 @@ export function LedgersPage() {
                             <div className="flex gap-3 pt-2">
                                 <button
                                     type="submit"
-                                    className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
+                                    disabled={createMutation.isPending}
+                                    className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
                                 >
-                                    Create Ledger
+                                    {createMutation.isPending ? "Creating..." : "Create Ledger"}
                                 </button>
                                 <button
                                     type="button"
@@ -145,6 +153,15 @@ export function LedgersPage() {
                             </div>
                         </form>
                     </div>
+                </div>
+            )}
+
+            {/* Error Message for fetching ledgers */}
+            {ledgersQuery.error && (
+                <div className="rounded-md bg-red-50 p-4">
+                    <p className="text-sm text-red-800">
+                        Failed to load ledgers: {ledgersQuery.error instanceof AxiosError ? (ledgersQuery.error.response?.data?.error || ledgersQuery.error.response?.data?.message || "Please try again later.") : "An error occurred. Please try again later."}
+                    </p>
                 </div>
             )}
 
@@ -204,10 +221,10 @@ export function LedgersPage() {
                                     <code className="text-xs text-gray-500">{ledger.project_id}</code>
                                 </td>
                                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                                    {new Date(ledger.created_at).toLocaleDateString("en-US", {
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric"
+                                    {new Date(ledger.created_at).toLocaleDateString("en-US", { 
+                                        month: "short", 
+                                        day: "numeric", 
+                                        year: "numeric" 
                                     })}
                                 </td>
                                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
@@ -225,9 +242,15 @@ export function LedgersPage() {
                 {!ledgersQuery.isLoading && (ledgersQuery.data || []).length === 0 && (
                     <div className="text-center py-12">
                         <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                         </svg>
                         <p className="mt-2 text-sm text-gray-500">No ledgers found. Create your first ledger to get started.</p>
+                        <button
+                            onClick={() => setShowForm(true)}
+                            className="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                        >
+                            Create Your First Ledger
+                        </button>
                     </div>
                 )}
             </div>

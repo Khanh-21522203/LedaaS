@@ -1,5 +1,6 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 
 const navItems = [
     { path: "/ledgers", label: "Ledgers" },
@@ -7,12 +8,11 @@ const navItems = [
 
 export function Navbar() {
     const location = useLocation();
-    const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { logout } = useAuth();
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        navigate("/login");
+    const handleLogout = async () => {
+        await logout();
     };
 
     return (

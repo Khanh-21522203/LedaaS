@@ -14,6 +14,13 @@ export interface User {
   created_at: string;
 }
 
+export interface UserResponse {
+  id: string;
+  email: string;
+  organization_id: string;
+  role: string;
+}
+
 export interface Organization {
   id: string;
   name: string;
@@ -56,6 +63,15 @@ export interface ApiKey {
   revoked_at: string | null;
 }
 
+export interface ApiKeyResponse {
+  id: string;
+  prefix: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  revoked_at?: string;
+}
+
 // ============================================================================
 // Ledger Domain Types (matching backend/database schema exactly)
 // ============================================================================
@@ -84,6 +100,15 @@ export interface Account {
   created_at: string;
 }
 
+export interface AccountResponse {
+  id: string;
+  code: string;
+  name: string;
+  type: AccountType;
+  balance: string;
+  created_at: string;
+}
+
 /**
  * Transaction read model (projected from events)
  */
@@ -92,6 +117,16 @@ export interface Transaction {
   ledger_id: string;
   external_id: string | null;
   amount: string; // String for precision
+  currency: string;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface TransactionResponse {
+  id: string;
+  ledger_id: string;
+  external_id: string | null;
+  amount: string;
   currency: string;
   occurred_at: string;
   created_at: string;
@@ -186,6 +221,13 @@ export interface WebhookEndpoint {
   created_at: string;
 }
 
+export interface WebhookEndpointResponse {
+  id: string;
+  url: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface WebhookDelivery {
   id: string;
   event_id: string;
@@ -196,6 +238,36 @@ export interface WebhookDelivery {
   http_status: number | null;
   error_message: string | null;
   created_at: string;
+}
+
+export interface WebhookDeliveryResponse {
+  id: string;
+  event_id: string;
+  webhook_endpoint_id: string;
+  endpoint_url: string;
+  status: string;
+  attempt: number;
+  last_attempt_at: string;
+  http_status: number | null;
+  error_message?: string;
+}
+
+// ============================================================================
+// Balance Types
+// ============================================================================
+
+export interface BalanceSummary {
+  total_debits: string;
+  total_credits: string;
+  net_balance: string;
+  currency: string;
+}
+
+export interface BalanceHistory {
+  account_code: string;
+  account_name: string;
+  balance: string;
+  occurred_at: string;
 }
 
 // ============================================================================

@@ -1,14 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
-
-export interface Ledger {
-    id: string;
-    project_id: string;
-    name: string;
-    code: string;
-    currency: string;
-    created_at: string;
-}
+import type { Ledger } from "../types";
 
 export function useLedgers() {
     return useQuery({

@@ -31,7 +31,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                     aria-describedby={[errorId, helperId].filter(Boolean).join(" ") || undefined}
                     className={`
                         block w-full rounded-md border-gray-300 shadow-sm
-                        focus:border-blue-500 focus:ring-blue-500
+                        focus:border-indigo-500 focus:ring-indigo-500
                         disabled:bg-gray-100 disabled:cursor-not-allowed
                         ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border"}
                         px-3 py-2 text-sm

@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 
 const navItems = [
     { path: "/ledgers", label: "Ledgers", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
@@ -9,10 +10,11 @@ const navItems = [
 export function Sidebar() {
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { user, logout } = useAuth();
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
+    const handleLogout = async () => {
+        await logout();
+        window.location.href = "/";
     };
 
     return (
@@ -104,8 +106,8 @@ export function Sidebar() {
                                 </svg>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">Admin User</p>
-                                <p className="text-xs text-slate-400 truncate">admin@laas.com</p>
+                                <p className="text-sm font-medium text-white truncate">{user?.email || "User"}</p>
+                                <p className="text-xs text-slate-400 truncate">{user?.organization_id || ""}</p>
                             </div>
                             <button
                                 onClick={handleLogout}
