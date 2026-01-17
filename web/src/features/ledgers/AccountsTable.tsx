@@ -1,52 +1,109 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../../api/client";
+import { apiClient } from "../../api/client";
+import { Card, Table, StatusBadge } from "../../components/ui";
+import type { Account, AccountType } from "../../types";
 
-interface Account {
-    id: string;
-    code: string;
-    name: string;
-    type: string;
-    balance: string;
+function formatCurrency(amount: string | number, currency: string): string {
+    const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(numAmount);
+}
+
+function getAccountTypeStatus(type: AccountType): "success" | "info" | "warning" | "neutral" | "error" {
+    switch (type.toLowerCase()) {
+        case "asset":
+            return "success";
+        case "liability":
+            return "warning";
+        case "equity":
+            return "info";
+        case "revenue":
+            return "success";
+        case "expense":
+            return "error";
+        default:
+            return "neutral";
+    }
 }
 
 export function AccountsTable({ ledgerID }: { ledgerID: string }) {
     const query = useQuery({
         queryKey: ["accounts", ledgerID],
-        queryFn: async () => {
-            const res = await api.get<Account[]>(`/ledgers/${ledgerID}/accounts`);
-            return res.data;
-        },
+        queryFn: () => apiClient.getAccounts(ledgerID),
     });
 
-    if (query.isLoading) {
-        return <div className="p-6">Loading accounts...</div>;
-    }
+    const columns = [
+        {
+            key: "code" as const,
+            header: "CODE",
+            render: (row: Account) => (
+                <code className="rounded-md bg-gray-100 px-2 py-1 text-xs font-mono text-gray-800">
+                    {row.code}
+                </code>
+            ),
+            className: "text-left",
+        },
+        {
+            key: "name" as const,
+            header: "NAME",
+            render: (row: Account) => (
+                <div>
+                    <div className="font-medium text-gray-900">{row.name}</div>
+                    <div className="text-xs text-gray-500 font-mono">{row.id}</div>
+                </div>
+            ),
+            className: "text-left",
+        },
+        {
+            key: "type" as const,
+            header: "TYPE",
+            render: (row: Account) => (
+                <StatusBadge status={getAccountTypeStatus(row.type)}>
+                    {row.type}
+                </StatusBadge>
+            ),
+            className: "text-left",
+        },
+        {
+            key: "balance" as const,
+            header: "BALANCE",
+            render: (row: Account) => {
+                const balance = parseFloat(row.balance);
+                const isNegative = balance < 0;
+                return (
+                    <div className={`font-mono font-semibold ${isNegative ? "text-red-600" : "text-green-600"}`}>
+                        {formatCurrency(row.balance, "USD")}
+                    </div>
+                );
+            },
+            className: "text-right",
+        },
+    ];
 
     return (
-        <div className="p-6">
-            <h1 className="mb-4 text-2xl font-bold">Accounts</h1>
-            <table className="min-w-full border">
-                <thead className="bg-gray-50">
-                <tr>
-                    <th className="border px-4 py-2 text-left">Code</th>
-                    <th className="border px-4 py-2 text-left">Name</th>
-                    <th className="border px-4 py-2 text-left">Type</th>
-                    <th className="border px-4 py-2 text-right">Balance</th>
-                </tr>
-                </thead>
-                <tbody>
-                {query.data?.map((account) => (
-                    <tr key={account.id} className="hover:bg-gray-50">
-                        <td className="border px-4 py-2 font-mono">{account.code}</td>
-                        <td className="border px-4 py-2">{account.name}</td>
-                        <td className="border px-4 py-2 capitalize">{account.type}</td>
-                        <td className="border px-4 py-2 text-right font-mono">
-                            {parseFloat(account.balance).toFixed(2)}
-                        </td>
-                    </tr>
-                ))}
-                </tbody>
-            </table>
+        <div className="space-y-6">
+            {/* Page Header */}
+            <div>
+                <h1 className="text-2xl font-semibold text-gray-900">Accounts</h1>
+                <p className="mt-1 text-sm text-gray-500">
+                    View and manage ledger accounts
+                </p>
+            </div>
+
+            {/* Accounts Table */}
+            <Card variant="bordered">
+                <Table
+                    data={query.data || []}
+                    columns={columns}
+                    keyField="id"
+                    loading={query.isLoading}
+                    emptyMessage="No accounts found for this ledger."
+                />
+            </Card>
         </div>
     );
 }
