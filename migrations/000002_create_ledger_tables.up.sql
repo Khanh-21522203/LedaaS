@@ -1,5 +1,5 @@
 -- Events table (source of truth)
-CREATE TABLE events
+CREATE TABLE IF NOT EXISTS events
 (
     id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     ledger_id       UUID        NOT NULL REFERENCES ledgers (id) ON DELETE CASCADE,
@@ -13,13 +13,13 @@ CREATE TABLE events
     UNIQUE (ledger_id, idempotency_key)
 );
 
-CREATE INDEX idx_events_ledger ON events (ledger_id);
-CREATE INDEX idx_events_aggregate ON events (aggregate_type, aggregate_id);
-CREATE INDEX idx_events_type ON events (event_type);
-CREATE INDEX idx_events_created ON events (created_at);
+CREATE INDEX IF NOT EXISTS idx_events_ledger ON events (ledger_id);
+CREATE INDEX IF NOT EXISTS idx_events_aggregate ON events (aggregate_type, aggregate_id);
+CREATE INDEX IF NOT EXISTS idx_events_type ON events (event_type);
+CREATE INDEX IF NOT EXISTS idx_events_created ON events (created_at);
 
 -- Accounts table (read model)
-CREATE TABLE accounts
+CREATE TABLE IF NOT EXISTS accounts
 (
     id         UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
     ledger_id  UUID            NOT NULL REFERENCES ledgers (id) ON DELETE CASCADE,
@@ -31,10 +31,10 @@ CREATE TABLE accounts
     UNIQUE (ledger_id, code)
 );
 
-CREATE INDEX idx_accounts_ledger_code ON accounts (ledger_id, code);
+CREATE INDEX IF NOT EXISTS idx_accounts_ledger_code ON accounts (ledger_id, code);
 
 -- Transactions table (read model)
-CREATE TABLE transactions
+CREATE TABLE IF NOT EXISTS transactions
 (
     id          UUID PRIMARY KEY,
     ledger_id   UUID            NOT NULL REFERENCES ledgers (id) ON DELETE CASCADE,
@@ -46,11 +46,11 @@ CREATE TABLE transactions
     UNIQUE (id, ledger_id)
 );
 
-CREATE INDEX idx_transactions_ledger ON transactions (ledger_id);
-CREATE INDEX idx_transactions_external ON transactions (ledger_id, external_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_ledger ON transactions (ledger_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_external ON transactions (ledger_id, external_id);
 
 -- Postings table (read model)
-CREATE TABLE postings
+CREATE TABLE IF NOT EXISTS postings
 (
     id             UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
     ledger_id      UUID            NOT NULL REFERENCES ledgers (id) ON DELETE CASCADE,
@@ -61,12 +61,12 @@ CREATE TABLE postings
     created_at     TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_postings_ledger ON postings (ledger_id);
-CREATE INDEX idx_postings_transaction ON postings (transaction_id);
-CREATE INDEX idx_postings_account ON postings (account_id);
+CREATE INDEX IF NOT EXISTS idx_postings_ledger ON postings (ledger_id);
+CREATE INDEX IF NOT EXISTS idx_postings_transaction ON postings (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_postings_account ON postings (account_id);
 
 -- Projector offsets table
-CREATE TABLE projector_offsets
+CREATE TABLE IF NOT EXISTS projector_offsets
 (
     projector_name          TEXT PRIMARY KEY,
     last_processed_event_id UUID NOT NULL

@@ -1,5 +1,5 @@
 -- Webhook endpoints table
-CREATE TABLE webhook_endpoints
+CREATE TABLE IF NOT EXISTS webhook_endpoints
 (
     id         UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     ledger_id  UUID        NOT NULL REFERENCES ledgers (id) ON DELETE CASCADE,
@@ -9,10 +9,10 @@ CREATE TABLE webhook_endpoints
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_webhook_endpoints_ledger ON webhook_endpoints (ledger_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_ledger ON webhook_endpoints (ledger_id);
 
 -- Webhook deliveries table
-CREATE TABLE webhook_deliveries
+CREATE TABLE IF NOT EXISTS webhook_deliveries
 (
     id                  UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     event_id            UUID        NOT NULL REFERENCES events (id) ON DELETE CASCADE,
@@ -25,5 +25,5 @@ CREATE TABLE webhook_deliveries
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_webhook_deliveries_event ON webhook_deliveries (event_id);
-CREATE INDEX idx_webhook_deliveries_endpoint ON webhook_deliveries (webhook_endpoint_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_event ON webhook_deliveries (event_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_endpoint ON webhook_deliveries (webhook_endpoint_id);

@@ -17,6 +17,23 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["./migrate"]
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/ledger_kiro?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/migration_complete"]
+      interval: 1s
+      timeout: 1s
+      retries: 1
+
   api:
     build:
       context: .
@@ -31,6 +48,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_healthy
 
   worker:
     build:
@@ -41,17 +60,19 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_healthy
 
-  test:
-    build:
-      context: .
-      dockerfile: Dockerfile.test
-    environment:
-      - TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    profiles:
-      - test
+#  test:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile.test
+#    environment:
+#      - TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#    profiles:
+#      - test
 
 volumes:
   postgres_data:
