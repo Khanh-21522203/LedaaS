@@ -18,12 +18,12 @@ A modern double-entry bookkeeping system built with Go and React.
 ```mermaid
 flowchart LR
     %% --- STYLE DEFINITIONS ---
-    classDef client fill:#e6fcf5,stroke:#0ca678,stroke-width:2px;
-    classDef component fill:#e7f5ff,stroke:#1c7ed6,stroke-width:2px;
-    classDef storage fill:#f3f0ff,stroke:#7950f2,stroke-width:2px,shape:cylinder;
-    classDef eventstore fill:#ffe3e3,stroke:#e03131,stroke-width:3px,shape:cylinder;
-    classDef external fill:#fff9db,stroke:#f08c00,stroke-width:2px;
-    classDef queue fill:#fff4e6,stroke:#fd7e14,stroke-width:2px,shape:c;
+    classDef client fill:#e6fcf5,stroke:#0ca678,color:#000000,stroke-width:2px;
+    classDef component fill:#e7f5ff,stroke:#1c7ed6,color:#000000,stroke-width:2px;
+    classDef storage fill:#f3f0ff,stroke:#7950f2,color:#000000,stroke-width:2px,shape:cylinder;
+    classDef eventstore fill:#ffe3e3,stroke:#e03131,color:#000000,stroke-width:3px,shape:cylinder;
+    classDef external fill:#fff9db,stroke:#f08c00,color:#000000,stroke-width:2px;
+    classDef queue fill:#fff4e6,stroke:#fd7e14,color:#000000,stroke-width:2px,shape:c;
 
     %% --- CLIENT ---
     subgraph ClientLayer ["Client Side"]
@@ -148,7 +148,6 @@ cd web && npm run dev
 
 Services will be available at:
 - API: http://localhost:8080
-- Web: http://localhost:5173
 - PostgreSQL: localhost:5432
 
 ## Project Structure
@@ -157,33 +156,42 @@ Services will be available at:
 LedaaS/
 ├── cmd/                 # Application entry points
 │   ├── api/            # API server
-│   ├── worker/         # Background job processor
-│   └── migrate/        # Database migrations
+│   ├── migrate/        # Database migrations
+│   ├── test-runner/    # Integration test runner
+│   └── worker/         # Background job processor
 ├── internal/           # Private application code
+│   ├── api/            # API routes and handlers
+│   ├── auth/           # Authentication & middleware
+│   ├── config/         # Configuration management
+│   ├── dashboard/      # Dashboard handlers
+│   ├── db/             # Database connections
 │   ├── integration/    # Integration tests
 │   ├── ledger/         # Core ledger logic
+│   ├── projector/      # Event projection service
 │   └── webhook/        # Webhook handling
-├── migrations/         # SQL migration files
-├── web/               # React frontend
-└── docker-compose.yml # Service orchestration
+├── web/               # React frontend (gitignored)
+
 ```
 
 ## Database Schema
 
 The system uses event sourcing with the following key tables:
-- `events` - Immutable source of truth
-- `accounts` - Current account balances
-- `transactions` - Processed transactions
-- `river_job` - Background job queue
 
-## Contributing
+### Identity & Access Management
+- `users` - User accounts
+- `organizations` - Organization management
+- `org_users` - User-organization relationships
+- `projects` - Project management
+- `ledgers` - Ledger definitions
+- `api_keys` - API authentication keys
 
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
+### Event Sourcing Core
+- `events` - Immutable source of truth storing all ledger events
+- `accounts` - Current account balances (read model)
+- `transactions` - Transaction records (read model)
+- `postings` - Double-entry postings (read model)
+- `projector_offsets` - Event projector tracking
 
-## License
-
-MIT License - see LICENSE file for details.
+### Webhook System
+- `webhook_endpoints` - Webhook endpoint configurations
+- `webhook_deliveries` - Webhook delivery logs and retry status
