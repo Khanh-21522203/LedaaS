@@ -48,7 +48,7 @@ func (m *Middleware) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		keyHash, err := computeKeyHash(m.APIKeySecret, apiKey)
+		keyHash, err := ComputeKeyHash(m.APIKeySecret, apiKey)
 		if err != nil {
 			http.Error(w, "invalid api key", http.StatusUnauthorized)
 			return
@@ -86,7 +86,7 @@ func FromContext(ctx context.Context) (Principal, error) {
 	return p, nil
 }
 
-func computeKeyHash(secret []byte, key string) (string, error) {
+func ComputeKeyHash(secret []byte, key string) (string, error) {
 	h := hmac.New(sha256.New, secret)
 	_, err := h.Write([]byte(key))
 	if err != nil {
