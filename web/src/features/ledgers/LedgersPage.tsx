@@ -50,7 +50,7 @@ export function LedgersPage() {
     }
 
     function handleLedgerClick(ledgerId: string) {
-        navigate(`/ledgers/${ledgerId}/accounts`);
+        navigate(`/ledgers/${ledgerId}`);
     }
 
     return (
@@ -163,6 +163,9 @@ export function LedgersPage() {
                                 CURRENCY
                             </th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                PROJECT ID
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                                 CREATED
                             </th>
                             <th scope="col" className="relative px-6 py-3">
@@ -173,7 +176,7 @@ export function LedgersPage() {
                     <tbody className="divide-y divide-gray-200 bg-white">
                         {ledgersQuery.isLoading ? (
                             <tr>
-                                <td colSpan={5} className="px-6 py-12 text-center">
+                                <td colSpan={6} className="px-6 py-12 text-center">
                                     <div className="flex justify-center">
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                                     </div>
@@ -198,10 +201,13 @@ export function LedgersPage() {
                                     </span>
                                 </td>
                                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                                    {new Date(ledger.created_at).toLocaleDateString("en-US", { 
-                                        month: "short", 
-                                        day: "numeric", 
-                                        year: "numeric" 
+                                    <code className="text-xs text-gray-500">{ledger.project_id}</code>
+                                </td>
+                                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                                    {new Date(ledger.created_at).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric"
                                     })}
                                 </td>
                                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">

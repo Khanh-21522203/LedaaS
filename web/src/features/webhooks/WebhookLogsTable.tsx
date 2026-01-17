@@ -45,11 +45,31 @@ export function WebhookLogsTable({ ledgerID }: { ledgerID: string }) {
 
     const columns = [
         {
+            key: "id" as const,
+            header: "DELIVERY ID",
+            render: (row: WebhookDeliveryDisplay) => (
+                <code className="text-xs font-mono text-gray-600">
+                    {row.id.slice(0, 12)}...
+                </code>
+            ),
+            className: "text-left",
+        },
+        {
             key: "event_id" as const,
             header: "EVENT ID",
             render: (row: WebhookDeliveryDisplay) => (
                 <code className="text-xs font-mono text-gray-600">
                     {row.event_id.slice(0, 8)}...
+                </code>
+            ),
+            className: "text-left",
+        },
+        {
+            key: "webhook_endpoint_id" as const,
+            header: "ENDPOINT ID",
+            render: (row: WebhookDeliveryDisplay) => (
+                <code className="text-xs font-mono text-gray-500">
+                    {row.webhook_endpoint_id.slice(0, 8)}...
                 </code>
             ),
             className: "text-left",
@@ -102,6 +122,16 @@ export function WebhookLogsTable({ ledgerID }: { ledgerID: string }) {
             render: (row: WebhookDeliveryDisplay) => (
                 <div className="text-sm text-gray-600">
                     {row.last_attempt_at ? formatDate(row.last_attempt_at) : "N/A"}
+                </div>
+            ),
+            className: "text-left",
+        },
+        {
+            key: "created_at" as const,
+            header: "CREATED",
+            render: (row: WebhookDeliveryDisplay) => (
+                <div className="text-sm text-gray-600">
+                    {formatDate(row.created_at)}
                 </div>
             ),
             className: "text-left",

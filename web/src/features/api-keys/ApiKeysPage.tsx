@@ -87,10 +87,26 @@ export function ApiKeysPage({ ledgerID }: { ledgerID: string }) {
             className: "text-left",
         },
         {
+            key: "revoked_at" as const,
+            header: "REVOKED AT",
+            render: (row: ApiKey) => (
+                <div className="text-sm text-gray-600">{row.revoked_at ? formatDate(row.revoked_at) : "-"}</div>
+            ),
+            className: "text-left",
+        },
+        {
             key: "created_at" as const,
             header: "CREATED",
             render: (row: ApiKey) => (
                 <div className="text-sm text-gray-600">{formatDate(row.created_at)}</div>
+            ),
+            className: "text-left",
+        },
+        {
+            key: "id" as const,
+            header: "ID",
+            render: (row: ApiKey) => (
+                <code className="text-xs font-mono text-gray-500">{row.id}</code>
             ),
             className: "text-left",
         },

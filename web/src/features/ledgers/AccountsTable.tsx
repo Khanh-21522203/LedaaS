@@ -82,6 +82,28 @@ export function AccountsTable({ ledgerID }: { ledgerID: string }) {
             },
             className: "text-right",
         },
+        {
+            key: "ledger_id" as const,
+            header: "LEDGER ID",
+            render: (row: Account) => (
+                <code className="text-xs font-mono text-gray-500">{row.ledger_id}</code>
+            ),
+            className: "text-left",
+        },
+        {
+            key: "created_at" as const,
+            header: "CREATED",
+            render: (row: Account) => (
+                <div className="text-sm text-gray-600">
+                    {new Date(row.created_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                    })}
+                </div>
+            ),
+            className: "text-left",
+        },
     ];
 
     return (
