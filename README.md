@@ -18,12 +18,12 @@ A modern double-entry bookkeeping system built with Go and React.
 ```mermaid
 flowchart LR
     %% --- STYLE DEFINITIONS ---
-    classDef client fill:#e6fcf5,stroke:#0ca678,stroke-width:2px;
-    classDef component fill:#e7f5ff,stroke:#1c7ed6,stroke-width:2px;
-    classDef storage fill:#f3f0ff,stroke:#7950f2,stroke-width:2px,shape:cylinder;
-    classDef eventstore fill:#ffe3e3,stroke:#e03131,stroke-width:3px,shape:cylinder;
-    classDef external fill:#fff9db,stroke:#f08c00,stroke-width:2px;
-    classDef queue fill:#fff4e6,stroke:#fd7e14,stroke-width:2px,shape:c;
+    classDef client fill:#e6fcf5,stroke:#0ca678,color:#000000,stroke-width:2px;
+    classDef component fill:#e7f5ff,stroke:#1c7ed6,color:#000000,stroke-width:2px;
+    classDef storage fill:#f3f0ff,stroke:#7950f2,color:#000000,stroke-width:2px,shape:cylinder;
+    classDef eventstore fill:#ffe3e3,stroke:#e03131,color:#000000,stroke-width:3px,shape:cylinder;
+    classDef external fill:#fff9db,stroke:#f08c00,color:#000000,stroke-width:2px;
+    classDef queue fill:#fff4e6,stroke:#fd7e14,color:#000000,stroke-width:2px,shape:c;
 
     %% --- CLIENT ---
     subgraph ClientLayer ["Client Side"]
