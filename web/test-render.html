@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script>
+    console.log("Script executing");
+  </script>
+</head>
+<body>
+  Test
+  <script>
+    try {
+      throw new Error("Test error");
+    } catch(e) {
+      console.error("Error caught:", e);
+    }
+  </script>
+</body>
+</html>
